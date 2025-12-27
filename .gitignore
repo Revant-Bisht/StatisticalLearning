@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# Data files
+*.csv
+*.json
+*.xlsx
+*.xls
+*.parquet
+*.h5
+*.hdf5
+
+# Store files
+*.store
+.store/
+.stores/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Conda
+.conda/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
