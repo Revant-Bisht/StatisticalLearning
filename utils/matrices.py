@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from math import pi
 import numpy as np
 from utils.base import BaseMatrixSolver
@@ -10,18 +11,26 @@ console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
+@dataclass
+class GaussJordanResult:
+    reduced_matrix: np.ndarray
+    inverse_matrix: np.ndarray
+
 class MyMatrixSolver(BaseMatrixSolver):
     def __init__(self, matrix: np.ndarray):
         self.matrix = matrix
-        self.gauss_jordan_matrix = self.gauss_jordan_elimination()
+        self.gauss_jordan_matrix = self.gauss_jordan_elimination().reduced_matrix
         self.determinant = self.calculate_determinant()
+        self.inverse = self.calculate_inverse()
+        self.rank = self.calculate_rank()
+        self.trace = self.calculate_trace()
         
     def summary(self):
         report = f" Matrix has \
-            RREF: {self.gauss_jordan_elimination()} \
+            RREF: {self.gauss_jordan_matrix} \
             Dimensions: {self.matrix.shape} \
-            Rank: {self.calculate_rank()} \
-            Trace: {self.calculate_trace()} \
+            Rank: {self.rank} \
+            Trace: {self.trace} \
             Eigenvalues: {self.calculate_eigenvalues()} \
             Eigenvectors: {self.calculate_eigenvectors()} \
             Null Space: {self.calculate_null_space()} \
@@ -38,7 +47,7 @@ class MyMatrixSolver(BaseMatrixSolver):
         "
         print(report)
 
-    def gauss_jordan_elimination(self):
+    def gauss_jordan_elimination(self) -> GaussJordanResult:
         """
         Function pseudocode. Example matrix:
         [[1, 2, 3],
@@ -73,32 +82,42 @@ class MyMatrixSolver(BaseMatrixSolver):
         """
         A = self.matrix.astype(float).copy()
         rows, columns = A.shape
+        identity_matrix = np.eye(rows)
         TOL = 1e-10
         pivot_row = 0
 
         for col in range(columns):
             if pivot_row >= rows:
                 break
+
+            # Select pivot row with largest absolute value in the current column (and check if it is zero)
             max_val_idx = np.argmax(np.abs(A[pivot_row:, col])) + pivot_row
             
             if abs(A[max_val_idx, col]) < TOL:
                 continue
-
+            
+            # Swap rows if pivot_row index != current row index - for matrix and identity matrix
             if max_val_idx != pivot_row:
                 A[[pivot_row, max_val_idx]] = A[[max_val_idx, pivot_row]]
+                identity_matrix[[pivot_row, max_val_idx]] = identity_matrix[[max_val_idx, pivot_row]]
 
+            # Normalize the pivot row for matrix and identity matrix
             pivot = A[pivot_row, col]
             A[pivot_row] /= pivot
+            identity_matrix[pivot_row] /= pivot
 
             for i in range(rows):
                 if i != pivot_row:
                     factor = A[i, col]
                     if abs(factor) > 0:
                         A[i] = A[i] - factor * A[pivot_row]
+                        identity_matrix[i] = identity_matrix[i] - factor * identity_matrix[pivot_row]
             pivot_row += 1
         
         A[np.abs(A) < TOL] = 0.0
-        return A
+
+        return GaussJordanResult(reduced_matrix=A, inverse_matrix=identity_matrix)
+
 
     def _truncate_matrix(self, matrix: np.ndarray, column: int, row: int = 0):
         """
@@ -159,23 +178,78 @@ class MyMatrixSolver(BaseMatrixSolver):
             
         return determinant
 
-    def calculate_inverse(self):
-        pass
+    def calculate_inverse(self, strict: bool = False):
+        # check if matrix is square and determinant is not 0
+        if self.matrix.shape[0] != self.matrix.shape[1]:
+            if strict:
+                raise ValueError("Matrix is not square")
+            else:
+                logger.warning("Matrix is not square. Cannot compute inverse.")
+                return None
+        if self.determinant == 0 or np.isnan(self.determinant):
+            if strict:
+                raise ValueError("Matrix is singular")
+            else:
+                logger.warning("Matrix is singular. Cannot compute inverse.")
+                return None
+
+        # Call gauss_jordan_elimination but with return_identity = True (to solve A | I)
+        # Inverse is the right half of the augmented matrix (I | A^-1)
+        inverse_matrix = self.gauss_jordan_elimination().inverse_matrix
+        return inverse_matrix
 
     def calculate_rank(self):
+        """
+        Calculate the rank of the matrix by counting the number of non-zero rows in the reduced row echelon form.
+        """
+        # Use RREF calculated in gauss_jordan_elimination().
+        RREF = self.gauss_jordan_elimination().reduced_matrix
+        TOL = 1e-10 # Tolerance for zero values
+
+        # A row is "non-zero" there are any (at least one) elements that are greater than the tolerance
+        non_zero_rows = np.any(np.abs(RREF) > TOL, axis=1)
+        rank = np.sum(non_zero_rows)
+        return rank
+
+
+    def calculate_trace(self, strict: bool = False):
+        """
+        Calculate the trace of the matrix: the sum of the elements on the main diagonal.
+        """
+        rows, columns = self.matrix.shape
+        if rows != columns:
+            if strict:
+                raise ValueError("Matrix is not square")
+            else:
+                logger.warning("Matrix is not square. Cannot compute trace.")
+                return None
+
+        diagonal_elements = np.diag(self.matrix)
+        trace = np.sum(diagonal_elements)
+        return trace
+
+    def calculate_covariance_matrix(self):
+        # TODO
         pass
 
-    def calculate_trace(self):
+    def calculate_correlation_matrix(self):
+        # TODO
         pass
 
     def calculate_eigenvalues(self):
+        # TODO
         pass
 
     def calculate_eigenvectors(self):
+        # TODO
         pass
 
     def calculate_null_space(self):
+        # TODO
         pass
+
+
+    # SECTION 2
 
     def calculate_column_space(self):
         pass
@@ -192,11 +266,9 @@ class MyMatrixSolver(BaseMatrixSolver):
     def calculate_orthonormal_basis(self):
         pass
 
-    def calculate_covariance_matrix(self):
-        pass
 
-    def calculate_correlation_matrix(self):
-        pass
+
+    # SECTION 3
 
     def calculate_principal_components(self):
         pass
