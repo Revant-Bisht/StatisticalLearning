@@ -50,10 +50,6 @@ class BaseMatrixSolver(ABC):
         pass
 
     @abstractmethod
-    def calculate_kernel(self):
-        pass
-
-    @abstractmethod
     def calculate_orthonormal_basis(self):
         pass
 
@@ -63,16 +59,4 @@ class BaseMatrixSolver(ABC):
 
     @abstractmethod
     def calculate_correlation_matrix(self):
-        pass
-
-    @abstractmethod
-    def calculate_principal_components(self):
-        pass
-
-    @abstractmethod
-    def calculate_principal_component_analysis(self):
-        pass
-
-    @abstractmethod
-    def calculate_singular_value_decomposition(self):
         pass

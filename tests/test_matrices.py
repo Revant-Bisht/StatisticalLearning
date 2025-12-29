@@ -240,10 +240,167 @@ class TestTrace:
             solver.calculate_trace(strict=True)
 
 class TestCovarianceMatrix:
-    pass
+    """Tests for the covariance matrix method."""
+    def test_covariance_matrix_of_2_by_2_matrix(self):
+        """Covariance matrix of 2x2 matrix should be calculated correctly."""
+        matrix = np.array([[1, 2], [3, 4]])
+        solver = MyMatrixSolver(matrix)
+        result = solver.covariance_matrix
+        expected = np.array([[2., 2.], [2., 2.]])
+        np.testing.assert_array_almost_equal(result, expected)
+    
+    def test_covariance_matrix_of_5_by_5_matrix(self):
+        """Covariance matrix of 5x5 matrix should be calculated correctly."""
+        matrix = np.array([
+            [1, 2, 3, 4, 5],
+            [6, 7, 8, 9, 10],
+            [11, 12, 13, 14, 15],
+            [16, 17, 18, 19, 20],
+            [21, 22, 23, 24, 25]
+        ])
+        solver = MyMatrixSolver(matrix)
+        result = solver.covariance_matrix
+        expected = np.array([
+            [62.5, 62.5, 62.5, 62.5, 62.5],
+            [62.5, 62.5, 62.5, 62.5, 62.5],
+            [62.5, 62.5, 62.5, 62.5, 62.5],
+            [62.5, 62.5, 62.5, 62.5, 62.5],
+            [62.5, 62.5, 62.5, 62.5, 62.5]
+        ])
+        np.testing.assert_array_almost_equal(result, expected)
+
+    def test_covariance_matrix_of_insufficient_samples(self):
+        """Covariance matrix of insufficient samples should raise ValueError in strict mode."""
+        matrix = np.array([[1, 2]])
+        solver = MyMatrixSolver(matrix)
+        # Check it returns zeros matrix (not using 'is' - use array comparison)
+        np.testing.assert_array_equal(solver.covariance_matrix, np.zeros((2, 2)))
+        with pytest.raises(ValueError, match="Matrix has less than 2 samples"):
+            solver.calculate_covariance_matrix(strict=True)
 
 class TestCorrelationMatrix:
-    pass
+    """Tests for the correlation matrix method."""
+    def test_correlation_matrix_for_1d_array_raises(self):
+        """1D array should raise ValueError (solver requires 2D matrices)."""
+        matrix = np.array([1, 2, 3])  # 1D array, not a matrix
+        with pytest.raises(ValueError):
+            MyMatrixSolver(matrix)
+
+    def test_correlation_matrix_for_single_sample(self):
+        """Matrix with only 1 sample should return zeros (insufficient for correlation)."""
+        matrix = np.array([[1, 2, 3]])  # 2D but only 1 row (1 sample)
+        solver = MyMatrixSolver(matrix)
+        # With only 1 sample, correlation is undefined - check it handles gracefully
+        np.testing.assert_array_equal(solver.correlation_matrix, np.zeros((3, 3)))
+
+    def test_correlation_matrix_of_2_by_2_matrix(self):
+        """Correlation matrix of 2x2 matrix should be calculated correctly."""
+        matrix = np.array([[1, 2], [3, 4]])
+        solver = MyMatrixSolver(matrix)
+        # Check it returns the correct correlation matrix (use array comparison)
+        result = solver.correlation_matrix
+        expected = np.array([[1., 1.], [1., 1.]])
+        np.testing.assert_array_almost_equal(result, expected)
+
+    def test_correlation_matrix_of_5_by_5_matrix(self):
+        """Correlation matrix of 5x5 matrix should be calculated correctly."""
+        matrix = np.array([
+            [1,  2,  3,  4,  5,  6],     # base signal
+            [2,  4,  6,  8, 10, 12],     # perfectly positively correlated with row 0
+            [6,  5,  4,  3,  2,  1],     # perfectly negatively correlated with row 0
+            [1,  3,  2,  5,  4,  6],     # moderately positively correlated
+            [6,  4,  5,  2,  3,  1],     # moderately negatively correlated
+        ])
+        solver = MyMatrixSolver(matrix)
+        result = solver.correlation_matrix
+        expected = np.array([
+            [1, 0.79626712,  0.42759306, -0.64607866, -0.55199703, -0.74723998],
+            [0.79626712, 1, 0.5547002, -0.1142909, -0.16896382, -0.31807321],
+            [0.42759306, 0.5547002, 1, 0.27472113, 0.50767308, 0.24326682],
+            [-0.64607866, -0.1142909, 0.27472113, 1, 0.92049224, 0.96904275],
+            [-0.55199703, -0.16896382, 0.50767308, 0.92049224, 1, 0.95624297],
+            [-0.74723998, -0.31807321, 0.24326682, 0.96904275, 0.95624297, 1]
+        ])
+        np.testing.assert_array_almost_equal(result, expected)
 
 class TestEigenvalues:
-    pass
+    """Tests for the eigenvalues method."""
+    def test_eigenvalues_of_2_by_2_matrix(self):
+        matrix = np.array([[2, 1], [1, 2]])
+        solver = MyMatrixSolver(matrix)
+        result = solver.eigenvalues
+        expected = np.array([3.0, 1.0])
+        np.testing.assert_array_almost_equal(result, expected)
+
+class TestNullSpace:
+    """Tests for the null space method."""
+    def test_null_space_of_full_rank_matrix(self):
+        """Full rank matrix should have no null space."""
+        matrix = np.array([[1, 2],[3, 4]])
+        solver = MyMatrixSolver(matrix)
+        result = solver.null_space
+        assert result is None
+
+    def test_null_space_of_singular_matrix(self):
+        """Singular matrix should have a null space."""
+        matrix = np.array([[1, 0, -2, 6], [-3, 6, 6, -6], [2, -3, -4, 6]])
+        solver = MyMatrixSolver(matrix)
+        result = solver.null_space
+        expected = np.array([[ 2., -0.,  1.,  0.], [-6., -2.,  0.,  1.]])
+        np.testing.assert_array_almost_equal(result, expected)
+
+class TestEigenvectors:
+    """Tests for the eigenvectors method."""
+    def test_eigenvectors_of_2_by_2_matrix(self):
+        matrix = np.array([[4, 1], [2, 3]])
+        solver = MyMatrixSolver(matrix)
+        result = solver.eigenvectors
+        # Eigenvectors are returned in the same order as eigenvalues.
+        # For this matrix, eigenvalues are [5, 2] so eigenvectors are ordered accordingly.
+        expected = np.array([[0.70710678, 0.70710678], [-0.4472136, 0.89442719]])
+        np.testing.assert_array_almost_equal(result, expected)
+
+class TestColumnSpace:
+    """Tests for the column space method."""
+    def test_column_space_of_3_by_4_matrix(self):
+        matrix = np.array([[1, 0, -2, 6], [-3, 6, 6, -6], [2, -3, -4, 6]])
+        solver = MyMatrixSolver(matrix)
+        result = solver.column_space
+        expected = np.array([[ 1, -3,  2],
+       [ 0,  6, -3]])
+        np.testing.assert_array_almost_equal(result, expected)
+
+class TestRowSpace:
+    """Tests for the row space method."""
+    def test_row_space_of_3_by_4_matrix(self):
+        matrix = np.array([[1, 0, -2, 6], [-3, 6, 6, -6], [2, -3, -4, 6]])
+        solver = MyMatrixSolver(matrix)
+        result = solver.row_space
+        expected = np.array([[1, 0, -2, 6], [0, 1, 0, 2]])
+        np.testing.assert_array_almost_equal(result, expected)
+
+class TestBasis:
+    """Tests for the basis method."""
+    def test_basis_of_3_by_4_matrix(self):
+        matrix = np.array([[1, 0, -2, 6], [-3, 6, 6, -6], [2, -3, -4, 6]])
+        solver = MyMatrixSolver(matrix)
+        result = solver.basis
+        expected = np.array([[1, -3, 2], [0, 6, -3]])
+        np.testing.assert_array_almost_equal(result, expected)
+
+class TestOrthonormalBasis:
+    """Tests for the orthonormal basis method."""
+    def test_orthonormal_basis_of_3_by_4_matrix(self):
+        matrix = np.array([[1, 0, -2, 6], [-3, 6, 6, -6], [2, -3, -4, 6]])
+        solver = MyMatrixSolver(matrix)
+        result = solver.orthonormal_basis
+        expected = np.array([[ 0.267261, -0.801784,  0.534522],
+       [ 0.872872,  0.436436,  0.218218]])
+        np.testing.assert_array_almost_equal(result, expected)
+    def test_orthonormal_basis_of_zero_matrix(self):
+        """Zero matrix has no pivot columns, so basis is empty."""
+        matrix = np.zeros((3, 3))
+        solver = MyMatrixSolver(matrix)
+        result = solver.orthonormal_basis
+        # Empty basis should return empty array
+        assert result.size == 0
